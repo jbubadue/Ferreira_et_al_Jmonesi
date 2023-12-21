@@ -1,0 +1,705 @@
+---
+title: "Brain Structure and Function"
+date: "Unveiling the neuroanatomy of *Josephoartigasia monesi* and the evolution of encephalization in caviomorph rodents"
+author: "Supplementary File 2"
+citation_package: biblatex
+font: 11pt
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+José Darival Ferreira\*; Andrés Rinderknecht; Jamile de Moura Bubadué; Luiza Flores Gasparetto, Maria Teresa Dozo; Marcelo R. Sánchez-Villagra; Leonardo Kerber\*
+
+\*corresponding authors: [darival.ferreira\@gmail.com](mailto:darival.ferreira@gmail.com){.email}; [leonardokerber\@gmail.com](mailto:leonardokerber@gmail.com){.email}
+
+```{=html}
+<style>
+pre[class*=language-]
+{font-size: 1em;} 
+</style>
+```
+|                                                                                                                                                                                                                                                                                                                                                                              |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| This file was prepared using R markdown. It contains the analytic framework reached while analyzing the manuscript data in R environment. Here, the study results are presented in more details, with additional comments and description. Any queries regarding it can be sent directly to JM Bubadué at [jamilebubadue\@gmail.com](mailto:jamilebubadue@gmail.com){.email} |
+
+Loading all the necessary R packages we depend on to conduct our analyses:
+
+```{r}
+require(ggplot2)
+require(ape)
+require(phytools)
+require(caper)
+require(nlme)
+require(RRPP)
+require(reshape2)
+```
+
+Loading the manuscript data file:
+
+```{r}
+data<-read.table("data",h=T,sep=",")
+```
+
+The data file loaded above includes the following columns: 
+
+num = numbering we used to identify each species in our figures; 
+
+taxon = species names matching the phylogeny tip labels; 
+
+PEQ = Phylogenetic Encephalization Quotient; 
+
+EQ = Pirelli's Encephalization Quotient (EQ); 
+
+BM = Body Mass; 
+
+BrM = Brain Mass; 
+
+EV = Endocast Volume; 
+
+SL = Skull Length; 
+
+LOC = seven-level locomotion categorization (arboreal, fossorial, rock-dwelling, scansorial, semiaquatic, and terrestrial); 
+
+diet = four-level diet categorization (folivore, frugivore-folivore, frugivore-granivore, and frugivore);
+
+social = two-level social behavior categorization (gregarious or solitary);
+
+LOC.simp = six-level locomotion category, simplified by moving the subterranean species *Ctenomys minutus* to the fossorial category;
+
+type = a category separating extant and fossil taxa; social = two-level social behavior category (gregarious or solitary); 
+
+
+
+Reading the calibrated phylogeny, presented as the Figure 1 of the manuscript:
+
+```{r}
+tree<-read.tree("calibrated_tree.txt")
+plotTree(tree,type="fan",fsize=0.5)
+```
+
+
+Preparing the data and computing the Phylogenetic Generalized Least Squares (PGLS) used for estimating the Phylogenetic Encephalization Quotient (PEQ) equation:
+
+```{r}
+datacavio <- comparative.data(tree, data, taxon)
+pglsmodel <- pgls(log(EV) ~ log(BM), datacavio)
+summary(pglsmodel)
+```
+
+
+The resulting PGLS equation above gave us an intercept of 5.3601858, and a slope of 0.5089834. The PGLS was plotted using the function 'ggplot':
+
+```{r}
+ggplot(data, aes(x = log(BM), y = log(EV),color=type))+
+  geom_abline(slope=0.5089834,intercept=5.3601858, linewidth = 1)+
+  geom_text(label=row.names(data),size=3.5) +  xlab("log (body mass)") + ylab("log (endocast volume)")+
+  theme_classic()+
+  labs(color=NULL)
+```
+The PEQ value of each species was computed based on the above function coefficients, each species body mass data, and their brain endocast volume, as follows:
+
+```{r}
+BM<-data$BM
+expin<-exp(5.3601858)
+EC<-expin*(BM^0.5089834)
+EV<-data$EV
+PEQ<-EV/EC
+```
+
+
+PEQ values can be saved using the following code: write.csv(PEQ,file="peq.csv"), but they are available at our data file and within our manuscript.
+
+
+The 'phytools' package was used to project observed and reconstructed values of PEQ, EV and BM onto the edges of our caviomorphs tree. We opted to use a colorblind friendly color gradient:
+
+```{r}
+colorgradient<-c("#332288","#785EF0","#DC267F","#FE6100",
+      "#FFB000")
+```
+
+
+Species names were inserted into our continuous traits vectors to match with our phylogeny tip labels. BM and EV values were transformed by their natural logarithmic values
+
+```{r}
+names(PEQ)<-data$taxon
+names(EV)<-data$taxon
+names(BM)<-data$taxon
+```
+
+
+PEQ plot, presented as the Figure 3.
+
+```{r}
+obj<-contMap(tree,PEQ,plot=FALSE)
+obj<-setMap(obj,colorgradient)
+plot(obj,fsize=c(0.7,0.8),
+     leg.txt="PEQ")
+
+PEQanc<-ace(PEQ,tree,type="continuous",method="ML")#object to access the estimated node values
+```
+
+EV plot, presented as the Figure S44:
+
+```{r}
+obj<-contMap(tree,log(EV),plot=FALSE)
+obj<-setMap(obj,colorgradient)
+plot(obj,fsize=c(0.7,0.8),
+     leg.txt="EV")
+
+EVanc<-ace(log(EV),tree,type="continuous",method="ML")#object to access the estimated node values
+```
+
+BM plot, presented as the Figure S45:
+
+```{r}
+obj<-contMap(tree,log(BM),plot=FALSE)
+obj<-setMap(obj,colorgradient)
+plot(obj,fsize=c(0.7,0.8),
+     leg.txt="BM")
+
+BManc<-ace(log(BM),tree,type="continuous",method="ML")#object to access the estimated node values
+```
+
+
+Blomberg K phylogenetic signal was computed for EV and BM values.
+
+```{r}
+phylosig(tree,log(EV),method="K",nsim = 99999,test=T)
+```
+
+```{r}
+phylosig(tree,log(BM),method="K",nsim = 99999,test=T)
+```
+
+
+Because the fossil species lack robust ecological information, only the extant taxa was used to test for the effect of diet, locomotion and social behavior in caviomorphs endocast volume.
+
+
+To exclude the fossil taxa from the phylogeny, a list with the fossil species names was created, and then used to drop these taxa from the initial tree.
+
+```{r}
+fossils<-c("Cardiatherium_patagonicum","Neoreomys_australis","Dolicavia_minuscula","Neopiblema_acreensis","Josephoartigasia_monesi")
+extant_tree<-drop.tip(tree,fossils)
+plotTree(extant_tree,type="fan",fsize=0.5)
+```
+
+The fossil taxa were also separated from the initial data file.
+
+```{r}
+data2<-split(data,data$type)#split data between fossil and extant taxa
+extant<-data2$extant#create vector with only extant taxa
+```
+
+
+Species are numbered in all plots as follows: 1. *Lagidium peruanum*, 2. *Chinchilla lanigera*, 3. *Lagostomus maximus*, 4. *Neoepiblema acreensis*, 5. *Josephoartigasia monesi*, 6. *Dinomys branickii*, 7. *Abrocoma bennettii*, 8. *Ctenomys minutus*, 9. *Octodontomys gliroides*, 10. *Proechimys goeldii*, 11. *Proechimys brevicauda*, 12. *Proechimys guairae*, 13. *Proechimys semispinosus*, 14. *Proechimys cuvieri*, 15. *Proechimys guyannensis*, 16. *Myocastor coypus*, 17. *Thrichomys apereoides*, 18. *Isothrix bistriata*, 19. *Kannabateomys amblyonyx*, 20. *Dactylomys dactylinus*, 21. *Toromys grandis*, 22. *Makalata armata*, 23. *Phyllomys dasythrix*, 24. *Echimys chrysurus*, 25. *Mysateles prehensilis*, 26. *Capromys pilorides*, 27. *Euryzygomatomys guiara*, 28. *Kerodon rupestris*, 29. *Hydrochoerus hydrochaeris*, 30. *Dolichotis patagonum*, 31. *Dolicavia minuscula*, 32. *Cavia aperea*, 33. *Cavia porcellus*, 34. *Galea musteloides*, 35. *Galea spixii*, 36. *Cuniculus paca*, 37. *Dasyprocta leporina*, 38. *Dasyprocta variegata*, 39. *Myoprocta pratti*, 40. *Neoreomys australis*, 41. *Erethizon dorsatum*, 42. *Coendou prehensilis*, 43. *Coendou villosus*, 44. *Coendou insidiosus*, 45. *Coendou spinosus*, 46. *Cardiatherium patagonicum*
+
+
+
+Species ecological categories included diet, locomotion and social behavior. PEQ values were plotted against them using a violin type plot. The mean and standardized deviation within each category are also presented. Statistical differences of PEQ value across categories were tested under permutation procedure. Fossils were embedded in the violin plots as a separated category for comparison purposes, but were not included in the analyses.
+
+
+**PEQ in relation to diet:** Frugivore-folivore species presented the highest overall PEQ values, but note *Phyllomys dasythrix* (#23) as an outlier. Pairwise comparisons show that the PEQ values within this category are statistically different from all others. The other dietary categories pairings were not statistically different.
+
+```{r}
+ggplot(data, aes(x=diet, y=PEQ,fill=diet)) + 
+  geom_violin(width=1,alpha=0.2) +
+  geom_text(label=row.names(data), size=3, position=position_jitter(0.2))+
+  labs(color=NULL)+xlab("") + ylab("PEQ")+
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange",
+               colour = "black",size=0.3)+
+  theme_classic()+ theme(legend.position = "none")
+```
+
+```{r}
+fitdiet<-lm.rrpp(extant$PEQ~extant$diet,iter=9999) 
+anova(fitdiet)
+```
+
+```{r}
+pwdiet<-pairwise(fitdiet,groups=extant$diet)
+summary(pwdiet)
+```
+
+**PEQ in relation to Locomotion:** A considerable overlap in PEQ values across locomotion categories can be observed. No statistical differences were found in the permutation anova test, neither for any pair of locomotion categories, as shown in our post-hoc pairwise comparisons.
+
+```{r}
+ggplot(data, aes(x=LOC.simp, y=PEQ,fill=LOC.simp)) + 
+  geom_violin(width=1,alpha=0.2) +
+  geom_text(label=row.names(data), size=3, position=position_jitter(0.2))+
+  labs(color=NULL)+xlab("") + ylab("PEQ")+
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange",
+               colour = "black",size=0.3)+
+  theme_classic()+ theme(legend.position = "none")
+```
+
+```{r}
+fitloc<-lm.rrpp(extant$PEQ~extant$LOC.simp,iter=9999) 
+anova(fitloc)
+```
+
+```{r}
+pwloc<-pairwise(fitloc,groups=extant$LOC.simp)
+summary(pwloc)
+```
+
+**PEQ in relation to Social Behavior:** There is a considerable amount of variation in PEQ values within the social behavior categories, and extensive overlap between them. Accordingly, we found no effect of social behavior in caviomorphs PEQ values.
+
+```{r}
+ggplot(data, aes(x=social, y=PEQ,fill=social)) + 
+  geom_violin(width=1,alpha=0.2) +
+  geom_text(label=row.names(data), size=3, position=position_jitter(0.2))+
+  labs(color=NULL)+xlab("") + ylab("PEQ")+
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange",
+               colour = "black",size=0.3)+
+  theme_classic()+ theme(legend.position = "none")
+```
+
+```{r}
+fitsocial<-lm.rrpp(extant$PEQ~extant$social,iter=9999) 
+anova(fitsocial)
+```
+
+
+Diet, locomotion and social behavior categories were used as competing hypotheses to explain endocast volume variation. Body mass variation was included with and without interaction with the three alternative ecological categories in the model selection process. Brownian motion, Early Burst (EB), and Ornstein-Uhlenbeck (OU) models were used as alternative error terms; and null models were written for each of the alternative error terms to be included in the model comparisons. Each of these competing models and their results are presented here.
+
+
+
+**Null Models**
+
+Null Brownian model:
+
+```{r}
+NULLBrownian<-gls(log(EV) ~1, data=extant,
+                  correlation=corBrownian(1,phy=extant_tree,form=~taxon),
+                  method="ML")
+summary(NULLBrownian)
+```
+
+Null EB model:
+
+```{r}
+NULLEB<-gls(log(EV) ~  1, data=extant, 
+          correlation=corBlomberg(1.5,phy=extant_tree,form=~taxon),
+          method="ML") 
+summary(NULLEB)
+```
+
+Null OU model:
+
+```{r}
+NULLOU<-gls(log(EV) ~  1, data=extant, 
+          correlation=corMartins(1,extant_tree,form=~taxon,fixed=TRUE),
+          method="ML")
+summary(NULLOU)
+```
+
+**Size models**
+
+Brownian model with body mass (BM) as predictor:
+
+```{r}
+BMBrownian<-gls(log(EV) ~  log(BM), data=extant,
+                        correlation=corBrownian(1,phy=extant_tree,form=~taxon),
+                method="ML")
+summary(BMBrownian)
+```
+
+EB model with BM as predictor:
+
+```{r}
+BMEB<-gls(log(EV) ~  log(BM), data=extant, 
+                        correlation=corBlomberg(1.5,phy=extant_tree,form=~taxon,fixed=TRUE),
+          method="ML")
+summary(BMEB)
+```
+
+OU model with BM as predictor:
+
+```{r}
+BMOU<-gls(log(EV) ~  log(BM), data=extant, 
+                  correlation=corMartins(1,phy=tree,form=~taxon,fixed=TRUE),
+          method="ML")
+summary(BMOU)
+```
+
+**Diet related models**
+
+Brownian model of EV with body mass plus diet:
+
+```{r}
+dietBrownian<-gls(log(EV) ~  log(BM)+diet, data=extant,
+                    correlation=corBrownian(1,phy=extant_tree,form=~taxon),
+                  method="ML")
+summary(dietBrownian)
+```
+
+Checking more specifically for the effect of diet in model tested above:
+
+```{r}
+anova(dietBrownian)
+```
+
+EB model of EV with body mass plus diet:
+
+```{r}
+dietEB<-gls(log(EV) ~  log(BM)+ diet, data=extant, 
+                    correlation=corBlomberg(1.5,phy=extant_tree,form=~taxon,fixed = TRUE),
+            method="ML")
+summary(dietEB)
+```
+
+Checking more specifically for the effect of diet in model tested above:
+
+```{r}
+anova(dietEB)
+```
+
+OU model of EV with body mass plus diet:
+
+```{r}
+dietOU<-gls(log(EV) ~  log(BM)+ diet, data=extant, 
+              correlation=corMartins(1,phy=extant_tree,form=~taxon,fixed = TRUE),
+            method="ML")
+summary(dietOU)
+```
+
+Checking more specifically for the effect of diet in model tested above:
+
+```{r}
+anova(dietOU)
+```
+
+Brownian model of EV with body mass interacting with diet:
+
+```{r}
+dietBrownianint<-gls(log(EV) ~  log(BM)*diet, data=extant,
+                       correlation=corBrownian(1,phy=extant_tree,form=~taxon),
+                     method="ML")
+summary(dietBrownianint)
+```
+
+Checking more specifically for the effect of diet in model tested above:
+
+```{r}
+anova(dietBrownianint)
+```
+
+EB model of EV with body mass interacting with diet:
+
+```{r}
+dietEBint<-gls(log(EV) ~  log(BM)*diet, data=extant, 
+                       correlation=corBlomberg(1.5,phy=extant_tree,form=~taxon,fixed = TRUE),
+               method="ML")
+summary(dietEBint)
+```
+
+Checking more specifically for the effect of diet in model tested above:
+
+```{r}
+anova(dietEBint)
+```
+
+OU model of EV with body mass interacting with diet:
+
+```{r}
+dietOUint<-gls(log(EV) ~  log(BM)*diet, data=extant, 
+                 correlation=corMartins(1,phy=extant_tree,form=~taxon,fixed=TRUE),
+               method="ML")
+summary(dietOUint)
+```
+
+Checking more specifically for the effect of diet in model tested above:
+
+```{r}
+anova(dietOUint)
+```
+
+**Locomotion related models**
+
+Brownian model of EV with body mass plus locomotion:
+
+```{r}
+LocomotionBrownian<-gls(log(EV) ~  log(BM) + LOC.simp, data=extant,
+              correlation=corBrownian(1,phy=extant_tree,form=~taxon),
+              method="ML")
+summary(LocomotionBrownian)
+```
+
+Checking more specifically for the effect of locomotion in model tested above:
+
+```{r}
+anova(LocomotionBrownian)
+```
+
+EB model of EV with body mass plus locomotion:
+
+```{r}
+LocomotionEB<-gls(log(EV) ~  log(BM) + LOC.simp, data=extant, 
+              correlation=corBlomberg(1.5,phy=extant_tree,form=~taxon,fixed = TRUE),
+              method="ML") 
+summary(LocomotionEB)
+```
+
+Checking more specifically for the effect of locomotion in model tested above:
+
+```{r}
+anova(LocomotionEB)
+```
+
+OU model of EV with body mass plus locomotion:
+
+```{r}
+LocomotionOU<-gls(log(EV) ~  log(BM) + LOC.simp, data=extant, 
+        correlation=corMartins(1,phy=tree,form=~taxon,fixed=TRUE),
+        method="ML")
+summary(LocomotionOU)
+```
+
+Checking more specifically for the effect of locomotion in model tested above:
+
+```{r}
+anova(LocomotionOU)
+```
+
+Brownian model of EV with body mass interacting with locomotion:
+
+```{r}
+LOCBrownianint<-gls(log(EV) ~  log(BM) * LOC.simp, data=extant,
+              correlation=corBrownian(1,phy=extant_tree,form=~taxon),
+              method="ML")
+summary(LOCBrownianint)
+```
+
+Checking more specifically for the effect of locomotion in model tested above:
+
+```{r}
+anova(LOCBrownianint)
+```
+
+EB model of EV with body mass interacting with locomotion:
+
+```{r}
+LOCEBint<-gls(log(EV) ~  log(BM) * LOC.simp, data=extant, 
+              correlation=corBlomberg(1.5,phy=extant_tree,form=~taxon,fixed = TRUE),
+              method="ML") 
+summary(LOCEBint)
+```
+
+Checking more specifically for the effect of locomotion in model tested above:
+
+```{r}
+anova(LOCEBint)
+```
+
+OU model of EV with body mass interacting with locomotion:
+
+```{r}
+LOCOUint<-gls(log(EV) ~  log(BM) * LOC.simp, data=extant, 
+        correlation=corMartins(1,phy=extant_tree,form=~taxon,fixed=TRUE),
+        method="ML")
+summary(LOCOUint)
+```
+
+Checking more specifically for the effect of locomotion in model tested above:
+
+```{r}
+anova(LOCOUint)
+```
+**Social behavior related models**
+
+Brownian motion model of EV with body mass plus social behavior:
+
+```{r}
+SocialBrownian<-gls(log(EV) ~  log(BM)+ social, data=extant,
+                        correlation=corBrownian(1,phy=extant_tree,form=~taxon),
+                    method="ML")
+summary(SocialBrownian)
+```
+
+Checking more specifically for the effect of social behavior in model tested above:
+
+```{r}
+anova(SocialBrownian)
+```
+
+EB model of EV with body mass plus social behavior:
+
+```{r}
+SocialEB<-gls(log(EV) ~  log(BM) + social, data=extant, 
+                        correlation=corBlomberg(1.5,phy=extant_tree,form=~taxon,fixed=TRUE),
+              method="ML") #if 1, this is a Brownian model
+summary(SocialEB)
+```
+
+Checking more specifically for the effect of social behavior in model tested above:
+
+```{r}
+anova(SocialEB)
+```
+
+
+OU model of EV with body mass plus social behavior:
+
+```{r}
+SocialOU<-gls(log(EV) ~  log(BM) + social, data=extant, 
+                  correlation=corMartins(1,phy=tree,form=~taxon,fixed=TRUE),
+              method="ML")
+summary(SocialOU)
+```
+
+Checking more specifically for the effect of social behavior in model tested above:
+
+```{r}
+anova(SocialOU)
+```
+
+Brownian motion model of EV with body mass interacting with social behavior:
+
+```{r}
+SocialBrownianint<-gls(log(EV) ~  log(BM) * social, data=extant,
+                    correlation=corBrownian(1,phy=extant_tree,form=~taxon),
+                    method="ML")
+summary(SocialBrownianint)
+```
+
+Checking more specifically for the effect of social behavior in model tested above:
+
+```{r}
+anova(SocialBrownianint)
+```
+
+EB model of EV with body mass interacting with social behavior:
+
+```{r}
+SocialEBint<-gls(log(EV) ~  log(BM) * social, data=extant, 
+                    correlation=corBlomberg(1.5,phy=extant_tree,form=~taxon,fixed = TRUE),
+                 method="ML")
+summary(SocialEBint)
+```
+
+Checking more specifically for the effect of social behavior in model tested above:
+
+```{r}
+anova(SocialEBint)
+```
+
+OU model of EV with body mass interacting with social behavior:
+
+```{r}
+SocialOUint<-gls(log(EV) ~  log(BM) * social, data=extant, 
+              correlation=corMartins(1,phy=tree,fixed=TRUE,form=~taxon),
+              method="ML")
+summary(SocialOUint)
+```
+
+Checking more specifically for the effect of social behavior in model tested above:
+
+```{r}
+anova(SocialOUint)
+```
+
+As presented in Table 2, we can conclude that BMEB and BMBrownian models, with resented the lowest AIC values, are equally competitive.
+
+AIC difference between the first two models is very low:
+```{r}
+AIC(BMBrownian)-AIC(BMEB)
+```
+
+We plotted the BMEB and BMBrownian PGLS prediction lines, and the PGLS slope used for PEQ calculations (also presented at Figure S43). Fossil taxa were also included for comparative purposes. This plot was presented within the manuscript as Figure 4.
+
+```{r}
+ggplot(data, aes(x = log(BM), y = log(EV),colour=type))+scale_color_grey(start=0.5,end=0)+
+  geom_abline(slope=0.5089834,intercept=5.3601858, 
+              linewidth = 1,linetype = "solid")+#fossil+extant slope
+  geom_abline(slope=0.6105295,intercept=4.7727736, 
+              linewidth = 1,linetype = "dashed",color="darkgrey")+#extant EB model slope
+  geom_abline(slope=0.617600,intercept=4.708995, 
+              linewidth = 1,linetype = "dotted")+#extant Brownian model slope
+  geom_text(label=row.names(data)) +  xlab("log (body mass)") + 
+  ylab("log (endocast volume)")+ theme_classic()+
+  labs(color=NULL)+ theme(legend.position = "none")
+```
+
+------------------
+Finally, we computed PEQ values based on extant taxa PGLS selected above. We used it to compare how our data behaves with different encephalization equations. Besides the extant+extinct PEQ, and the extant only PEQ, comparisons also included the Pilleri's EQ; our data EQ including fossils; Extant PEQ, and Extant+Extinct PEQ:
+
+FEPEQ = Fossil+Extant PEQ:
+```{r}
+BM<-data$BM
+expin<-exp(5.3601858)
+EC<-expin*(BM^0.5089834)
+EV<-data$EV
+FEPEQ<-EV/EC
+```
+
+EPEQ = Extant PEQ:
+```{r}
+expin2<-exp(4.708995)
+EC2<-expin*(BM^0.6105295)
+EPEQ<-EV/EC2
+```
+
+Pilleri's EQ:
+```{r}
+PilleriEQ<-data$EQ
+```
+
+FEEQ = EQ with extant+fossils:
+```{r}
+fit<-lm(log(EV)~log(BM))
+coef(fit)
+```
+
+```{r}
+expin3<-exp(5.0087076)
+EC3<-expin*(BM^0.5636761)
+FEEQ<-EV/EC3
+```
+
+EEQ = EQ with extant species:
+```{r}
+fit<-lm(log(extant$EV)~log(extant$BM))
+coef(fit)
+```
+
+```{r}
+expin4<-exp(4.2451198)
+EC4<-expin*(BM^0.6829116)
+EEQ<-EV/EC4
+```
+
+
+Comparing plot:
+```{r}
+type<-data$type
+peqcomp<-data.frame(PilleriEQ,FEEQ,EEQ,FEPEQ,EPEQ)
+taxan<-data$num
+peqcomp<-melt(peqcomp)
+reptaxan<-rep(taxan, times=5)
+reptype<-rep(type, times=5)
+  
+ ggplot(peqcomp, aes(x=variable, y=value,color=reptype)) + 
+  geom_boxplot(outlier.shape = NA)+
+  geom_text(label=reptaxan, size=3, position=position_jitterdodge(0.2))+
+  labs(color=NULL)+xlab("") + ylab("value")+
+  theme_classic()  
+```
+
+**References**
+
+Collyer M. L.; D. C. Adams (2023). RRPP: Linear Model Evaluation with Randomized Residuals in a Permutation Procedure. R package version 1.4.0.
+
+Hadley Wickham (2007). Reshaping Data with the reshape Package. Journal of Statistical Software, 21(12), 1-20.
+
+Orme D, Freckleton R, Thomas G, Petzoldt T, Fritz  S, Isaac N & Pearse W (2023). caper: Comparative Analyses of Phylogenetics and Evolution in R. R package version 1.0.3.
+
+Paradis E & Schliep K (2019) ape 5.0: an environment for modern phylogenetics and evolutionary analyses in R. Bioinformatics, 35, 526-528. doi:10.1093/bioinformatics/bty633
+
+Pinheiro J, Bates D, R Core Team (2023). nlme: Linear and Nonlinear Mixed Effects Models. R package version 3.1-163.
+
+Revell LJ (2012) phytools: An R package for phylogenetic comparative biology (and other things). Methods in Ecology and Evolution, 3, 217-223.
+  
+Wickham H (2016) ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York.
